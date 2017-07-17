@@ -45,8 +45,7 @@ class lda_scvb : public lda_model
      * @param minibatch_size The number of documents to consider in a
      * minibatch
      */
-    lda_scvb(const learn::dataset& docs, std::size_t num_topics, double alpha,
-             double beta, uint64_t minibatch_size = 100);
+    lda_scvb(const learn::dataset& docs, const cpptoml::table& lda_config, uint64_t minibatch_size = 100);
 
     /**
      * Destructor: virtual for potential subclassing.
@@ -63,7 +62,7 @@ class lda_scvb : public lda_model
      * minibatches) to run the inference algorithm for
      * @param convergence Unused
      */
-    virtual void run(uint64_t num_iters, double convergence = 0) override;
+    virtual bool run(uint64_t num_iters, double convergence = 0) override;
 
     virtual double
     compute_term_topic_probability(term_id term, topic_id topic) const override;
@@ -119,10 +118,6 @@ class lda_scvb : public lda_model
      */
     std::vector<double> doc_sizes_;
 
-    /// The hyperparameter on \f$\theta\f$, the topic proportions
-    const double alpha_;
-    /// The hyperparameter on \f$\phi\f$, the topic distributions
-    const double beta_;
     /// The size of the minibatches
     const uint64_t minibatch_size_;
 };

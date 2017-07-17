@@ -13,19 +13,16 @@ namespace meta
 namespace topics
 {
 
-lda_scvb::lda_scvb(const learn::dataset& docs, std::size_t num_topics,
-                   double alpha, double beta, uint64_t minibatch_size)
-    : lda_model{docs, num_topics},
+lda_scvb::lda_scvb(const learn::dataset& docs, const cpptoml::table& lda_config, uint64_t minibatch_size)
+    : lda_model{docs, lda_config},
       docs_view_{docs_},
-      alpha_{alpha},
-      beta_{beta},
       minibatch_size_{
           std::min(minibatch_size, static_cast<uint64_t>(docs_.size()))}
 {
     // nothing
 }
 
-void lda_scvb::run(uint64_t num_iters, double)
+bool lda_scvb::run(uint64_t num_iters, double)
 {
     initialize();
     for (uint64_t iter = 0; iter < num_iters; ++iter)
@@ -33,6 +30,8 @@ void lda_scvb::run(uint64_t num_iters, double)
         docs_view_.shuffle();
         perform_iteration(iter + 1);
     }
+
+	 return false;
 }
 
 void lda_scvb::initialize()
@@ -45,7 +44,7 @@ void lda_scvb::initialize()
     topic_count_.resize(num_topics_);
     doc_sizes_.resize(docs_.size());
 
-    std::mt19937 rng{std::random_device{}()};
+    std::mt19937 rng{seed_};
     printing::progress progress{" > Initialization: ", docs_.size()};
     for (const auto& doc : docs_)
     {

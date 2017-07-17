@@ -45,7 +45,7 @@ class lda_model
      * @param docs Documents to use for the model
      * @param num_topics The number of topics to find
      */
-    lda_model(const learn::dataset& docs, std::size_t num_topics);
+    lda_model(const learn::dataset& docs, const cpptoml::table& lda_config);
 
     /**
      * Destructor. Made virtual to allow for deletion through pointer to
@@ -61,7 +61,7 @@ class lda_model
      * @param convergence The convergence criteria (this has different
      * meanings for different subclass models)
      */
-    virtual void run(uint64_t num_iters, double convergence) = 0;
+    virtual bool run(uint64_t num_iters, double convergence) = 0;
 
     /**
      * Saves the topic proportions \f$\theta_d\f$ for each document to
@@ -85,7 +85,15 @@ class lda_model
      *
      * @param prefix The prefix for all generated files over this model
      */
-    void save(const std::string& prefix) const;
+    void save() const;
+
+	 /**
+	 * Saves the current model to a set of files beginning with prefix:
+	 * prefix.phi, prefix.theta.
+	 *
+	 * @param prefix The prefix for all generated files over this model
+	 */
+	 void save_results(const std::string& file_name) const;
 
     /**
      * @return the probability that the given term appears in the given
@@ -117,6 +125,14 @@ class lda_model
 
   protected:
     /**
+     * Saves the current model to a set of files beginning with prefix:
+     * results.iteration_number.phi, results.iteration_number.phi.
+     *
+     * @param prefix The prefix for all generated files over this model
+     */
+    void save_intermediate_results() const;
+
+    /**
      * lda_models cannot be copy assigned.
      */
     lda_model& operator=(const lda_model&) = delete;
@@ -140,6 +156,48 @@ class lda_model
      * The number of topics.
      */
     std::size_t num_topics_;
+
+	 /**
+	 * Alpha.
+	 */
+	 double alpha_;
+
+	 /**
+	 * Beta.
+	 */
+	 double beta_;
+
+	 /**
+	 * Maximum number of iterations
+	 */
+	 const uint64_t max_iters_;
+
+    /**
+     * The number of iterations to run between saving
+     * intermediate results
+     */
+	 const uint64_t save_period_;
+
+	 /**
+	 * The number of iterations to run between saving
+	 * intermediate results
+	 */
+	 const std::string prefix_;
+
+	 /**
+	 * Seed for the random number generators
+	 */
+	 const uint64_t seed_;
+
+	 /**
+	 * Iterations elapsed
+	 */
+	 uint64_t iters_elapsed_;
+
+	 /**
+	 * Whether the model has convered or not or hit its maximum
+	 */
+	 bool converged_;
 };
 
 class lda_model_excpetion : public std::runtime_error

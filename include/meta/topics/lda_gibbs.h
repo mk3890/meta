@@ -42,9 +42,9 @@ class lda_gibbs : public lda_model
      * \f$\phi\f$
      * @param beta The hyperparameter for the Dirichlet prior over
      * \f$\theta\f$
+	  * @param seed A seed for the random number generator
      */
-    lda_gibbs(const learn::dataset& docs, std::size_t num_topics, double alpha,
-              double beta);
+    lda_gibbs(const learn::dataset& docs, const cpptoml::table& lda_config);
 
     /**
      * Destructor: virtual for potential subclassing.
@@ -63,7 +63,7 @@ class lda_gibbs : public lda_model
      * P(\mathbf{w} \mid \mathbf{z})\f$ to be allowed before considering
      * the sampler to have converged
      */
-    virtual void run(uint64_t num_iters, double convergence = 1e-6) override;
+    virtual bool run(uint64_t num_iters, double convergence = 1e-6) override;
 
     /**
      * @return the probability that the given term appears in the given

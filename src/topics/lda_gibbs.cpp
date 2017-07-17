@@ -14,9 +14,9 @@ namespace meta
 namespace topics
 {
 
-lda_gibbs::lda_gibbs(const learn::dataset& docs, std::size_t num_topics,
-                     double alpha, double beta)
-    : lda_model{docs, num_topics}
+lda_gibbs::lda_gibbs(const learn::dataset& docs,
+                     const cpptoml::table& lda_config)
+    : lda_model{docs, lda_config}
 {
     doc_word_topic_.resize(docs_.size());
 
@@ -25,7 +25,7 @@ lda_gibbs::lda_gibbs(const learn::dataset& docs, std::size_t num_topics,
     theta_.reserve(docs_.size());
     for (const auto& doc : docs_)
     {
-        theta_.emplace_back(stats::dirichlet<topic_id>{alpha, num_topics_});
+        theta_.emplace_back(stats::dirichlet<topic_id>{alpha_, num_topics_});
         doc_word_topic_[doc.id].resize(doc_size(doc));
     }
 
@@ -34,13 +34,13 @@ lda_gibbs::lda_gibbs(const learn::dataset& docs, std::size_t num_topics,
     phi_.reserve(num_topics_);
     for (topic_id topic{0}; topic < num_topics_; ++topic)
         phi_.emplace_back(
-            stats::dirichlet<term_id>{beta, docs_.total_features()});
+            stats::dirichlet<term_id>{beta_, docs_.total_features()});
 
     std::random_device dev;
-    rng_.seed(dev());
+    rng_.seed(seed_);
 }
 
-void lda_gibbs::run(uint64_t num_iters, double convergence /* = 1e-6 */)
+bool lda_gibbs::run(uint64_t num_iters, double convergence /* = 1e-6 */)
 {
     initialize();
     double likelihood = corpus_log_likelihood();
@@ -68,13 +68,44 @@ void lda_gibbs::run(uint64_t num_iters, double convergence /* = 1e-6 */)
         LOG(progress) << '\r' << ss.str() << '\n' << ENDLG;
         if (ratio <= convergence)
         {
+            converged_ = true;
             LOG(progress) << "Found convergence after " << i + 1
                           << " iterations!\n"
                           << ENDLG;
             break;
         }
+        else if (iters_elapsed_ == max_iters_)
+        {
+            converged_ = true;
+            LOG(info) << "Finished maximum iterations, or found convergence!"
+                      << ENDLG;
+        }
+        else
+        {
+            if (i % save_period_ == 0)
+            {
+                LOG(progress)
+                    << "Saving results for iteration " << i + 1 << '\n'
+                    << ENDLG;
+                save_results("results-" + std::to_string(i));
+
+                // TODO: Save the state that we need
+            }
+        }
+
+		  ++iters_elapsed_;
     }
-    LOG(info) << "Finished maximum iterations, or found convergence!" << ENDLG;
+
+    if (converged_)
+    {
+        LOG(info) << "Finished maximum iterations, or found convergence!"
+                  << ENDLG;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 topic_id lda_gibbs::sample_topic(term_id term, learn::instance_id doc)

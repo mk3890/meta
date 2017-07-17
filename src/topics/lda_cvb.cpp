@@ -13,9 +13,8 @@ namespace meta
 namespace topics
 {
 
-lda_cvb::lda_cvb(const learn::dataset& docs, std::size_t num_topics,
-                 double alpha, double beta)
-    : lda_model{docs, num_topics}
+lda_cvb::lda_cvb(const learn::dataset& docs, const cpptoml::table& lda_config)
+    : lda_model{docs, lda_config}
 {
     gamma_.resize(docs_.size());
 
@@ -24,7 +23,7 @@ lda_cvb::lda_cvb(const learn::dataset& docs, std::size_t num_topics,
     theta_.reserve(docs_.size());
     for (const auto& doc : docs_)
     {
-        theta_.emplace_back(stats::dirichlet<topic_id>{alpha, num_topics_});
+        theta_.emplace_back(stats::dirichlet<topic_id>{alpha_, num_topics_});
         gamma_[doc.id].resize(doc_size(doc));
     }
 
@@ -33,10 +32,10 @@ lda_cvb::lda_cvb(const learn::dataset& docs, std::size_t num_topics,
     phi_.reserve(num_topics_);
     for (topic_id topic{0}; topic < num_topics_; ++topic)
         phi_.emplace_back(
-            stats::dirichlet<term_id>{beta, docs_.total_features()});
+            stats::dirichlet<term_id>{beta_, docs_.total_features()});
 }
 
-void lda_cvb::run(uint64_t num_iters, double convergence)
+bool lda_cvb::run(uint64_t num_iters, double convergence)
 {
     initialize();
     for (uint64_t i = 0; i < num_iters; ++i)
@@ -52,18 +51,46 @@ void lda_cvb::run(uint64_t num_iters, double convergence)
         LOG(progress) << '\r' << ss.str() << '\n' << ENDLG;
         if (max_change <= convergence)
         {
+            converged_ = true;
             LOG(progress) << "Found convergence after " << i + 1
                           << " iterations!\n";
             break;
         }
+        //else if (iters_elapsed_ == max_iters_)
+        //{
+        //    converged_ = true;
+        //    LOG(info) << "Finished maximum iterations, or found convergence!"
+        //              << ENDLG;
+        //}
+        //else
+        //{
+        //    if (i % save_period_ == 0)
+        //    {
+        //        LOG(progress)
+        //            << "Saving results for iteration " << i + 1 << '\n'
+        //            << ENDLG;
+        //        save_results("results-" + std::to_string(i));
+
+        //        // TODO: Save the state that we need
+        //    }
+        //}
     }
-    LOG(info) << "Finished maximum iterations, or found convergence!" << ENDLG;
+
+    if (converged_)
+    {
+        LOG(info) << "Finished maximum iterations, or found convergence!"
+                  << ENDLG;
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 void lda_cvb::initialize()
 {
-    std::random_device rdev;
-    std::mt19937 rng(rdev());
+    std::mt19937 rng(seed_);
     printing::progress progress{"Initialization: ", docs_.size()};
 
     for (const auto& doc : docs_)

@@ -42,8 +42,7 @@ class lda_cvb : public lda_model
      * @param beta The hyperparameter for the Dirichlet prior over
      *  \f$\theta\f$
      */
-    lda_cvb(const learn::dataset& docs, std::size_t num_topics, double alpha,
-            double beta);
+    lda_cvb(const learn::dataset& docs, const cpptoml::table& lda_config);
 
     /**
      * Destructor: virtual for potential subclassing.
@@ -63,7 +62,7 @@ class lda_cvb : public lda_model
      *  \f$\gamma_{dij}\f$ to be allowed before considering the
      *  inference to have converged
      */
-    void run(uint64_t num_iters, double convergence = 1e-3) override;
+    bool run(uint64_t num_iters, double convergence = 1e-3) override;
 
     virtual double
     compute_term_topic_probability(term_id term, topic_id topic) const override;

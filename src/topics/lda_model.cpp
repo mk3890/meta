@@ -3,18 +3,41 @@
  * @author Chase Geigle
  */
 
-#include "meta/topics/lda_model.h"
+#include <chrono>
 #include <iostream>
+
+#include "meta/io/filesystem.h"
+#include "meta/topics/lda_model.h"
 
 namespace meta
 {
 namespace topics
 {
 
-lda_model::lda_model(const learn::dataset& docs, std::size_t num_topics)
-    : docs_(docs), num_topics_{num_topics}
+lda_model::lda_model(const learn::dataset& docs,
+                     const cpptoml::table& lda_config)
+    : docs_(docs),
+      num_topics_(lda_config.get_as<std::size_t>("topics").value_or(10)),
+      alpha_(lda_config.get_as<double>("alpha").value_or(0.1)),
+      beta_(lda_config.get_as<double>("beta").value_or(0.1)),
+      max_iters_(lda_config.get_as<uint64_t>("max-iters").value_or(0.1)),
+      save_period_(lda_config.get_as<uint64_t>("save-period")
+                       .value_or(std::numeric_limits<uint64_t>::max())),
+      prefix_(
+          lda_config.get_as<std::string>("model-prefix").value_or("lda-model")),
+      seed_(lda_config.get_as<uint64_t>("seed").value_or(
+          std::chrono::system_clock::now().time_since_epoch().count())),
+      iters_elapsed_(0),
+      converged_(false)
 {
     /* nothing */
+    std::cout << "num_topics_: " << num_topics_ << std::endl;
+    std::cout << "alpha_: " << alpha_ << std::endl;
+    std::cout << "beta_: " << beta_ << std::endl;
+    std::cout << "max_iters_: " << max_iters_ << std::endl;
+    std::cout << "save_period_: " << save_period_ << std::endl;
+    std::cout << "prefix_:" << prefix_ << std::endl;
+    std::cout << "seed_:" << seed_ << std::endl;
 }
 
 void lda_model::save_doc_topic_distributions(std::ostream& stream) const
@@ -61,10 +84,18 @@ void lda_model::save_topic_term_distributions(std::ostream& stream) const
     }
 }
 
-void lda_model::save(const std::string& prefix) const
+void lda_model::save() const
 {
-    std::ofstream theta_file{prefix + ".theta", std::ios::binary};
-    std::ofstream phi_file{prefix + ".phi", std::ios::binary};
+    save_results("final");
+}
+
+void lda_model::save_results(const std::string& file_name) const
+{
+    filesystem::make_directory(prefix_);
+    std::ofstream theta_file{prefix_ + "/" + file_name + ".theta",
+                             std::ios::binary};
+    std::ofstream phi_file{prefix_ + "/" + file_name + ".phi",
+                           std::ios::binary};
 
     save_doc_topic_distributions(theta_file);
     save_topic_term_distributions(phi_file);

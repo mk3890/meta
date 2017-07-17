@@ -48,6 +48,7 @@ alpha = 1.0
 beta = 1.0
 topics = 4
 model-prefix = "lda-model"
+save-period = "10"
 
 [crf]
 prefix = "crf"
