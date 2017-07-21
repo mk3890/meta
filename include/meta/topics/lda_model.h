@@ -61,7 +61,7 @@ class lda_model
      * @param convergence The convergence criteria (this has different
      * meanings for different subclass models)
      */
-    virtual bool run(uint64_t num_iters, double convergence) = 0;
+    virtual bool run(uint64_t num_iters) = 0;
 
     /**
      * Saves the topic proportions \f$\theta_d\f$ for each document to
@@ -125,12 +125,9 @@ class lda_model
 
   protected:
     /**
-     * Saves the current model to a set of files beginning with prefix:
-     * results.iteration_number.phi, results.iteration_number.phi.
-     *
-     * @param prefix The prefix for all generated files over this model
+     * Saves the current state of the model.
      */
-    void save_intermediate_results() const;
+    virtual void save_state() const = 0;
 
     /**
      * lda_models cannot be copy assigned.
@@ -192,7 +189,12 @@ class lda_model
 	 /**
 	 * Iterations elapsed
 	 */
-	 uint64_t iters_elapsed_;
+    std::size_t iters_elapsed_;
+
+    /**
+     * The threshold for determining convergence
+     */
+    double convergence_threshold_;
 
 	 /**
 	 * Whether the model has convered or not or hit its maximum

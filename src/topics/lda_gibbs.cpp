@@ -18,6 +18,11 @@ lda_gibbs::lda_gibbs(const learn::dataset& docs,
                      const cpptoml::table& lda_config)
     : lda_model{docs, lda_config}
 {
+    convergence_threshold_
+        = lda_config.get_as<double>("convergence_threshold").value_or(1e-6);
+    std::cout << "convergence_threshold_: " << convergence_threshold_
+              << std::endl;
+
     doc_word_topic_.resize(docs_.size());
 
     // each theta_ is a multinomial over topics with a symmetric
@@ -40,7 +45,7 @@ lda_gibbs::lda_gibbs(const learn::dataset& docs,
     rng_.seed(seed_);
 }
 
-bool lda_gibbs::run(uint64_t num_iters, double convergence /* = 1e-6 */)
+bool lda_gibbs::run(uint64_t num_iters)
 {
     initialize();
     double likelihood = corpus_log_likelihood();
@@ -66,7 +71,7 @@ bool lda_gibbs::run(uint64_t num_iters, double convergence /* = 1e-6 */)
                             ' ');
         ss << spacing;
         LOG(progress) << '\r' << ss.str() << '\n' << ENDLG;
-        if (ratio <= convergence)
+        if (ratio <= convergence_threshold_)
         {
             converged_ = true;
             LOG(progress) << "Found convergence after " << i + 1
@@ -93,7 +98,7 @@ bool lda_gibbs::run(uint64_t num_iters, double convergence /* = 1e-6 */)
             }
         }
 
-		  ++iters_elapsed_;
+        ++iters_elapsed_;
     }
 
     if (converged_)
@@ -104,6 +109,8 @@ bool lda_gibbs::run(uint64_t num_iters, double convergence /* = 1e-6 */)
     }
     else
     {
+        save_results("results-" + std::to_string(iters_elapsed_));
+        save_state();
         return false;
     }
 }
@@ -218,5 +225,27 @@ double lda_gibbs::corpus_log_likelihood() const
     }
     return likelihood;
 }
+
+void lda_gibbs::save_state() const
+{
+    std::ofstream state_stream{
+        prefix_ + "/lda_gibbs." + std::to_string(iters_elapsed_) + ".state.bin",
+        std::ios::binary};
+
+    io::packed::write(state_stream, doc_word_topic_.size());
+    for (const auto& doc : doc_word_topic_)
+    {
+        io::packed::write(state_stream, doc.size());
+        for (const auto& word_topic : doc)
+        {
+            io::packed::write(state_stream, word_topic);
+        }
+    }
+}
+
+// void lda_gibbs::load_state() const
+//{
+//
+//}
 }
 }

@@ -62,7 +62,7 @@ class lda_cvb : public lda_model
      *  \f$\gamma_{dij}\f$ to be allowed before considering the
      *  inference to have converged
      */
-    bool run(uint64_t num_iters, double convergence = 1e-3) override;
+    bool run(uint64_t num_iters) override;
 
     virtual double
     compute_term_topic_probability(term_id term, topic_id topic) const override;
@@ -86,6 +86,11 @@ class lda_cvb : public lda_model
      * @return the maximum change in any of the \f$\gamma_{dij}\f$s
      */
     double perform_iteration(uint64_t iter);
+
+    /**
+    * Saves the current state of the model.
+    */
+    void save_state() const override;
 
     /**
      * Variational distributions \f$\gamma_{ij}\f$, which represent the soft

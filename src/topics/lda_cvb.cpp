@@ -16,6 +16,9 @@ namespace topics
 lda_cvb::lda_cvb(const learn::dataset& docs, const cpptoml::table& lda_config)
     : lda_model{docs, lda_config}
 {
+    convergence_threshold_
+        = lda_config.get_as<double>("convergence_threshold").value_or(1e-3);
+    
     gamma_.resize(docs_.size());
 
     // each theta_ is a multinomial over topics with a symmetric
@@ -35,7 +38,7 @@ lda_cvb::lda_cvb(const learn::dataset& docs, const cpptoml::table& lda_config)
             stats::dirichlet<term_id>{beta_, docs_.total_features()});
 }
 
-bool lda_cvb::run(uint64_t num_iters, double convergence)
+bool lda_cvb::run(uint64_t num_iters)
 {
     initialize();
     for (uint64_t i = 0; i < num_iters; ++i)
@@ -49,20 +52,20 @@ bool lda_cvb::run(uint64_t num_iters, double convergence)
                             ' ');
         ss << spacing;
         LOG(progress) << '\r' << ss.str() << '\n' << ENDLG;
-        if (max_change <= convergence)
+        if (max_change <= convergence_threshold_)
         {
             converged_ = true;
             LOG(progress) << "Found convergence after " << i + 1
                           << " iterations!\n";
             break;
         }
-        //else if (iters_elapsed_ == max_iters_)
+        // else if (iters_elapsed_ == max_iters_)
         //{
         //    converged_ = true;
         //    LOG(info) << "Finished maximum iterations, or found convergence!"
         //              << ENDLG;
         //}
-        //else
+        // else
         //{
         //    if (i % save_period_ == 0)
         //    {
@@ -194,5 +197,10 @@ stats::multinomial<topic_id> lda_cvb::topic_distrbution(doc_id doc) const
 {
     return theta_[doc];
 }
+
+void meta::topics::lda_cvb::save_state() const
+{
+}
+
 }
 }

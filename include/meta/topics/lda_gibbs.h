@@ -63,7 +63,7 @@ class lda_gibbs : public lda_model
      * P(\mathbf{w} \mid \mathbf{z})\f$ to be allowed before considering
      * the sampler to have converged
      */
-    virtual bool run(uint64_t num_iters, double convergence = 1e-6) override;
+    virtual bool run(uint64_t num_iters) override;
 
     /**
      * @return the probability that the given term appears in the given
@@ -152,6 +152,13 @@ class lda_gibbs : public lda_model
      */
     virtual void increase_counts(topic_id topic, term_id term,
                                  learn::instance_id doc);
+
+    
+    /**
+    * Saves the current state of the model.
+    */
+    void save_state() const override;
+
 
     /**
      * @return \f$\log P(\mathbf{w} \mid \mathbf{z})\f$

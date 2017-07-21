@@ -22,7 +22,7 @@ lda_scvb::lda_scvb(const learn::dataset& docs, const cpptoml::table& lda_config,
     // nothing
 }
 
-bool lda_scvb::run(uint64_t num_iters, double)
+bool lda_scvb::run(uint64_t num_iters)
 {
     initialize();
     for (uint64_t iter = 0; iter < num_iters; ++iter)
@@ -197,5 +197,10 @@ stats::multinomial<topic_id> lda_scvb::topic_distrbution(doc_id doc) const
 
     return result;
 }
+
+void meta::topics::lda_scvb::save_state() const
+{
+}
+
 }
 }

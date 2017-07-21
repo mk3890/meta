@@ -62,7 +62,7 @@ class lda_scvb : public lda_model
      * minibatches) to run the inference algorithm for
      * @param convergence Unused
      */
-    virtual bool run(uint64_t num_iters, double convergence = 0) override;
+    virtual bool run(uint64_t num_iters) override;
 
     virtual double
     compute_term_topic_probability(term_id term, topic_id topic) const override;
@@ -84,6 +84,11 @@ class lda_scvb : public lda_model
      * @param iter The iteration number
      */
     void perform_iteration(uint64_t iter);
+
+    /**
+    * Saves the current state of the model.
+    */
+    void save_state() const override;
 
     /**
      * View of underlying documents that can efficiently be shuffled for each

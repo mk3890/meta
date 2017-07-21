@@ -24,7 +24,8 @@ int run_lda(Dataset& docs, const cpptoml::table& lda_config)
 {
     auto num_iters = *lda_config.get_as<uint64_t>("max-iters");
     Model model{docs, lda_config};
-    model.run(num_iters);
+    //model.run(num_iters);
+    model.run(23);
     model.save();
     return 0;
 }
