@@ -47,39 +47,20 @@ void lda_model::save_doc_topic_distributions(std::ostream& stream) const
 
     for (const auto& d : docs_)
     {
-        auto dist = topic_distrbution(doc_id{d.id});
-        for (topic_id j{0}; j < num_topics_; ++j)
-        {
-            io::packed::write(stream, dist.counts(j));
-        }
+        io::packed::write(stream, topic_distrbution(doc_id{d.id}));
     }
 }
 
 void lda_model::save_topic_term_distributions(std::ostream& stream) const
 {
-    // first, compute the denominators for each term's normalized score
-    std::vector<double> denoms;
-    denoms.reserve(docs_.total_features());
-    for (term_id t_id{0}; t_id < docs_.total_features(); ++t_id)
-    {
-        double denom = 1.0;
-        for (topic_id j{0}; j < num_topics_; ++j)
-            denom *= compute_term_topic_probability(t_id, j);
-        denom = std::pow(denom, 1.0 / num_topics_);
-        denoms.push_back(denom);
-    }
-
     io::packed::write(stream, num_topics_);
     io::packed::write(stream, docs_.total_features());
 
-    // then, calculate and save each term's score
     for (topic_id j{0}; j < num_topics_; ++j)
     {
         for (term_id t_id{0}; t_id < docs_.total_features(); ++t_id)
         {
-            double prob = compute_term_topic_probability(t_id, j);
-            double norm_prob = prob * std::log(prob / denoms[t_id]);
-            io::packed::write(stream, norm_prob);
+            io::packed::write(stream, compute_term_topic_probability(t_id, j));
         }
     }
 }
@@ -92,9 +73,9 @@ void lda_model::save() const
 void lda_model::save_results(const std::string& file_name) const
 {
     filesystem::make_directory(prefix_);
-    std::ofstream theta_file{prefix_ + "/" + file_name + ".theta",
+    std::ofstream theta_file{prefix_ + "/" + file_name + ".theta.bin",
                              std::ios::binary};
-    std::ofstream phi_file{prefix_ + "/" + file_name + ".phi",
+    std::ofstream phi_file{prefix_ + "/" + file_name + ".phi.bin",
                            std::ios::binary};
 
     save_doc_topic_distributions(theta_file);
