@@ -116,14 +116,15 @@ class topic_model
     const std::size_t num_docs_;
 
     /**
-     * The term probabilities by topic
-     */
-    std::vector<util::aligned_vector<double>> topic_term_probabilities_;
+    * The word distributions for each topic, \f$\phi_t\f$.
+    */
+    std::vector<stats::multinomial<term_id>> phi_;
+
 
     /**
-     * The term probabilities by topic
-     */
-    std::vector<stats::multinomial<topic_id>> doc_topic_probabilities_;
+    * The topic distributions for each document, \f$\theta_d\f$.
+    */
+    std::vector<stats::multinomial<topic_id>> theta_;
 };
 
 template <typename T>
@@ -135,7 +136,7 @@ std::vector<term_prob> topic_model::top_k(topic_id tid, std::size_t k,
             return a.probability > b.probability;
         });
 
-    auto current_topic = topic_term_probabilities_[tid];
+    auto current_topic = phi_[tid];
 
     for (term_id i{0}; i < num_words_; ++i)
     {

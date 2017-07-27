@@ -82,10 +82,15 @@ class lda_model
     /**
      * Saves the current model to a set of files beginning with prefix:
      * prefix.phi, prefix.theta.
-     *
-     * @param prefix The prefix for all generated files over this model
+
      */
     void save() const;
+
+    /**
+    * Load the current model to a set of files beginning with prefix:
+    * prefix.phi, prefix.theta.
+    */
+    void load();
 
 	 /**
 	 * Saves the current model to a set of files beginning with prefix:
@@ -135,6 +140,11 @@ class lda_model
     virtual void save_state() const = 0;
 
     /**
+    * Load the current state of the model.
+    */
+    virtual void load_state() = 0;
+
+    /**
      * lda_models cannot be copy assigned.
      */
     lda_model& operator=(const lda_model&) = delete;
@@ -168,6 +178,16 @@ class lda_model
 	 * Beta.
 	 */
 	 double beta_;
+
+    /**
+    * The word distributions for each topic, \f$\phi_t\f$.
+    */
+    std::vector<stats::multinomial<term_id>> phi_;
+
+    /**
+    * The topic distributions for each document, \f$\theta_d\f$.
+    */
+    std::vector<stats::multinomial<topic_id>> theta_;
 
 	 /**
 	 * Maximum number of iterations

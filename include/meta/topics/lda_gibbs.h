@@ -153,12 +153,15 @@ class lda_gibbs : public lda_model
     virtual void increase_counts(topic_id topic, term_id term,
                                  learn::instance_id doc);
 
-    
     /**
     * Saves the current state of the model.
     */
     void save_state() const override;
 
+    /**
+    * Load the current state of the model.
+    */
+    void load_state() override;
 
     /**
      * @return \f$\log P(\mathbf{w} \mid \mathbf{z})\f$
@@ -186,19 +189,18 @@ class lda_gibbs : public lda_model
     std::vector<std::vector<topic_id>> doc_word_topic_;
 
     /**
-     * The word distributions for each topic, \f$\phi_t\f$.
-     */
-    std::vector<stats::multinomial<term_id>> phi_;
-
-    /**
-     * The topic distributions for each document, \f$\theta_d\f$.
-     */
-    std::vector<stats::multinomial<topic_id>> theta_;
-
-    /**
      * The random number generator for the sampler.
      */
     std::mt19937_64 rng_;
+
+    /**
+    * Number of times the RNG has been used. 
+    *
+    * While it's not strictly necessary it does allow us to verify that the 
+    * stop/start functionality returns the same result as running it all
+    * at once.
+    */
+    std::size_t rng_counter_;
 };
 }
 }

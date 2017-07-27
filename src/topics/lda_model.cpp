@@ -56,18 +56,79 @@ void lda_model::save_topic_term_distributions(std::ostream& stream) const
     io::packed::write(stream, num_topics_);
     io::packed::write(stream, docs_.total_features());
 
-    for (topic_id j{0}; j < num_topics_; ++j)
+    for (const auto& p : phi_)
     {
-        for (term_id t_id{0}; t_id < docs_.total_features(); ++t_id)
-        {
-            io::packed::write(stream, compute_term_topic_probability(t_id, j));
-        }
+        io::packed::write(stream, p);
     }
 }
 
 void lda_model::save() const
 {
     save_results("final");
+}
+
+void lda_model::load()
+{
+   // Load the state first so we know which file to open
+   load_state();
+
+   std::ifstream theta{ prefix_ + "/results-" + std::to_string(iters_elapsed_)
+      + ".theta.bin",
+      std::ios::binary };
+   std::ifstream phi{ prefix_ + "/results-" + std::to_string(iters_elapsed_)
+      + ".phi.bin",
+      std::ios::binary };
+
+   {
+      if (!theta)
+      {
+         throw std::runtime_error{ prefix_ + "/results-"
+            + std::to_string(iters_elapsed_)
+            + ".theta.bin" };
+      }
+
+      printing::progress doc_progress{
+         " > Loading document topic probabilities: ", docs_.size() };
+      io::packed::read<std::size_t>(theta);
+      io::packed::read<std::size_t>(theta);
+      for (doc_id d{ 0 }; d < docs_.size(); ++d)
+      {
+         if (!theta)
+         {
+            throw std::runtime_error{
+               "document topic stream ended unexpectedly" };
+         }
+
+         doc_progress(d);
+         theta_[d] = io::packed::read<stats::multinomial<topic_id>>(theta);
+      }
+   }
+
+   {
+      if (!phi)
+      {
+         throw std::runtime_error{ prefix_ + "/results-"
+            + std::to_string(iters_elapsed_)
+            + "phi.bin" };
+      }
+
+      printing::progress term_progress{
+         " > Loading topic term probabilities: ", num_topics_ };
+
+      io::packed::read<std::size_t>(phi);
+      io::packed::read<std::size_t>(phi);
+      for (topic_id tid{ 0 }; tid < num_topics_; ++tid)
+      {
+         if (!phi)
+         {
+            throw std::runtime_error{
+               "topic term stream ended unexpectedly" };
+         }
+
+         phi_[tid] = io::packed::read<stats::multinomial<term_id>>(phi);
+         term_progress(tid);
+      }
+   }
 }
 
 void lda_model::save_results(const std::string& file_name) const

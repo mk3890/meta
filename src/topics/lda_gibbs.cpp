@@ -16,7 +16,7 @@ namespace topics
 
 lda_gibbs::lda_gibbs(const learn::dataset& docs,
                      const cpptoml::table& lda_config)
-    : lda_model{docs, lda_config}
+    : lda_model{docs, lda_config}, rng_counter_(0)
 {
     convergence_threshold_
         = lda_config.get_as<double>("convergence_threshold").value_or(1e-6);
@@ -38,16 +38,25 @@ lda_gibbs::lda_gibbs(const learn::dataset& docs,
     // Dirichlet(\beta) prior
     phi_.reserve(num_topics_);
     for (topic_id topic{0}; topic < num_topics_; ++topic)
+    {
         phi_.emplace_back(
             stats::dirichlet<term_id>{beta_, docs_.total_features()});
+    }
 
-    std::random_device dev;
     rng_.seed(seed_);
+
+    if (filesystem::exists(prefix_ + "/lda_gibbs.state.bin"))
+    {
+        load();
+    }
 }
 
 bool lda_gibbs::run(uint64_t num_iters)
 {
-    initialize();
+    if (iters_elapsed_ == 0)
+    {
+        initialize();
+    }
     double likelihood = corpus_log_likelihood();
     std::stringstream ss;
     ss << "Initialization log likelihood (log P(W|Z)): " << likelihood;
@@ -59,12 +68,13 @@ bool lda_gibbs::run(uint64_t num_iters)
 
     for (uint64_t i = 0; i < num_iters; ++i)
     {
-        perform_iteration(i + 1);
+        ++iters_elapsed_;
+        perform_iteration(iters_elapsed_);
         double likelihood_update = corpus_log_likelihood();
         double ratio = std::fabs((likelihood - likelihood_update) / likelihood);
         likelihood = likelihood_update;
         std::stringstream ss;
-        ss << "Iteration " << i + 1
+        ss << "Iteration " << iters_elapsed_
            << " log likelihood (log P(W|Z)): " << likelihood;
         std::string spacing(static_cast<std::size_t>(
                                 std::max<std::streamoff>(0, 80 - ss.tellp())),
@@ -74,7 +84,7 @@ bool lda_gibbs::run(uint64_t num_iters)
         if (ratio <= convergence_threshold_)
         {
             converged_ = true;
-            LOG(progress) << "Found convergence after " << i + 1
+            LOG(progress) << "Found convergence after " << iters_elapsed_
                           << " iterations!\n"
                           << ENDLG;
             break;
@@ -82,29 +92,25 @@ bool lda_gibbs::run(uint64_t num_iters)
         else if (iters_elapsed_ == max_iters_)
         {
             converged_ = true;
-            LOG(info) << "Finished maximum iterations, or found convergence!"
-                      << ENDLG;
+            LOG(info) << "Finished maximum iterations!" << ENDLG;
         }
         else
         {
-            if (i % save_period_ == 0)
+            if (iters_elapsed_ % save_period_ == 0)
             {
                 LOG(progress)
-                    << "Saving results for iteration " << i + 1 << '\n'
+                    << "Saving results for iteration " << iters_elapsed_ << '\n'
                     << ENDLG;
-                save_results("results-" + std::to_string(i));
-
-                // TODO: Save the state that we need
+                save_results("results-" + std::to_string(iters_elapsed_));
             }
         }
-
-        ++iters_elapsed_;
     }
 
     if (converged_)
     {
         LOG(info) << "Finished maximum iterations, or found convergence!"
                   << ENDLG;
+        meta::filesystem::delete_file(prefix_ + "/lda_gibbs.state.bin");
         return true;
     }
     else
@@ -123,6 +129,7 @@ topic_id lda_gibbs::sample_topic(term_id term, learn::instance_id doc)
         auto weight = compute_sampling_weight(term, doc, topic);
         full_conditional.increment(topic, weight);
     }
+    ++rng_counter_;
     return full_conditional(rng_);
 }
 
@@ -228,10 +235,11 @@ double lda_gibbs::corpus_log_likelihood() const
 
 void lda_gibbs::save_state() const
 {
-    std::ofstream state_stream{
-        prefix_ + "/lda_gibbs." + std::to_string(iters_elapsed_) + ".state.bin",
-        std::ios::binary};
+    std::ofstream state_stream{prefix_ + "/lda_gibbs.state.bin",
+                               std::ios::binary};
 
+    io::packed::write(state_stream, rng_counter_);
+    io::packed::write(state_stream, iters_elapsed_);
     io::packed::write(state_stream, doc_word_topic_.size());
     for (const auto& doc : doc_word_topic_)
     {
@@ -243,9 +251,31 @@ void lda_gibbs::save_state() const
     }
 }
 
-// void lda_gibbs::load_state() const
-//{
-//
-//}
+void lda_gibbs::load_state()
+{
+    std::ifstream state{prefix_ + "/lda_gibbs.state.bin", std::ios::binary};
+
+    rng_counter_ = io::packed::read<std::size_t>(state);
+    iters_elapsed_ = io::packed::read<std::size_t>(state);
+    auto dwt_size = io::packed::read<std::size_t>(state);
+
+    rng_.discard(rng_counter_);
+    doc_word_topic_.resize(dwt_size);
+
+    {
+        printing::progress state_progress{" > Loading word topic assignments: ",
+                                          dwt_size};
+        for (std::size_t i = 0; i < dwt_size; ++i)
+        {
+            auto doc_size = io::packed::read<std::size_t>(state);
+            auto& doc = doc_word_topic_[i];
+            for (std::size_t j = 0; j < doc_size; ++j)
+            {
+                doc[j] = io::packed::read<topic_id>(state);
+            }
+            state_progress(i);
+        }
+    }
+}
 }
 }

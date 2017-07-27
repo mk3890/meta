@@ -198,7 +198,11 @@ stats::multinomial<topic_id> lda_scvb::topic_distrbution(doc_id doc) const
     return result;
 }
 
-void meta::topics::lda_scvb::save_state() const
+void lda_scvb::save_state() const
+{
+}
+
+void lda_scvb::load_state()
 {
 }
 

@@ -93,6 +93,11 @@ class lda_cvb : public lda_model
     void save_state() const override;
 
     /**
+    * Load the current state of the model.
+    */
+    void load_state() override;
+
+    /**
      * Variational distributions \f$\gamma_{ij}\f$, which represent the soft
      * topic assignments for each word occurrence \f$i\f$ in document
      * \f$j\f$.
@@ -100,16 +105,6 @@ class lda_cvb : public lda_model
      * Indexed as gamma_[doc.id][i]
      */
     std::vector<std::vector<stats::multinomial<topic_id>>> gamma_;
-
-    /**
-     * The word distributions for each topic, \f$\phi_t\f$.
-     */
-    std::vector<stats::multinomial<term_id>> phi_;
-
-    /**
-     * The topic distributions for each document, \f$\theta_d\f$.
-     */
-    std::vector<stats::multinomial<topic_id>> theta_;
 };
 }
 }

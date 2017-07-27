@@ -91,6 +91,11 @@ class lda_scvb : public lda_model
     void save_state() const override;
 
     /**
+    * Load the current state of the model.
+    */
+    void load_state() override;
+
+    /**
      * View of underlying documents that can efficiently be shuffled for each
      * minibatch.
      */

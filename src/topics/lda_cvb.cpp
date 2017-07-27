@@ -198,7 +198,11 @@ stats::multinomial<topic_id> lda_cvb::topic_distrbution(doc_id doc) const
     return theta_[doc];
 }
 
-void meta::topics::lda_cvb::save_state() const
+void lda_cvb::save_state() const
+{
+}
+
+void lda_cvb::load_state()
 {
 }
 
